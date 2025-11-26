@@ -1,214 +1,214 @@
 <?php
-// profil.php
+    // profil.php
 
-// 1. ZAČETEK SEJE IN ZAŠČITA STRANI
-session_start();
+    // 1. ZAČETEK SEJE IN ZAŠČITA STRANI
+    session_start();
 
-// Vključitev konfiguracije baze podatkov
-require_once 'config.php'; 
+    // Vključitev konfiguracije baze podatkov
+    require_once 'config.php'; 
 
-// Preveri, ali je uporabnik prijavljen, sicer preusmeri na prijavno stran
-if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
-    header('location: login.php');
-    exit;
-}
-
-$uporabnik_id = $_SESSION['uporabnik_id'];
-$user_data = []; // Za shranjevanje vseh podatkov uporabnika
-$error_msg = '';
-$success_msg = '';
-
-// 2. PRIDOBIVANJE PODATKOV UPORABNIKA IN CILJEV
-$conn = connect_db();
-
-// Združitev podatkov o uporabniku, vlogi in zadnjem cilju
-$sql = "
-    SELECT 
-        u.ime, u.priimek, u.email, u.datum_rojstva, u.visina, u.teza, u.geslo,
-        v.naziv_vloge AS vloga_naziv, 
-        c.tip_cilja
-    FROM 
-        uporabnik u
-    JOIN 
-        vloga v ON u.vloga_id = v.vloga_id
-    LEFT JOIN 
-        cilj c ON u.uporabnik_id = c.uporabnik_id
-    WHERE 
-        u.uporabnik_id = ?
-    ORDER BY c.cilj_id DESC 
-    LIMIT 1
-";
-
-if ($stmt = $conn->prepare($sql)) {
-    $stmt->bind_param('i', $uporabnik_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    
-    if ($result->num_rows == 1) {
-        $user_data = $result->fetch_assoc();
-    } else {
-        $error_msg = 'Napaka: Podatkov o uporabniku ni bilo mogoče naložiti.';
+    // Preveri, ali je uporabnik prijavljen, sicer preusmeri na prijavno stran
+    if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
+        header('location: login.php');
+        exit;
     }
-    $stmt->close();
-}
 
-// 3. UPRAVLJANJE OBRAZCEV (Vse logike posodobitev so tukaj)
+    $uporabnik_id = $_SESSION['uporabnik_id'];
+    $user_data = []; // Za shranjevanje vseh podatkov uporabnika
+    $error_msg = '';
+    $success_msg = '';
 
-function update_password($conn, $uporabnik_id, $current_password, $new_password, $confirm_password, $hashed_current_password) {
-    global $error_msg, $success_msg;
-    
-    if (!password_verify($current_password, $hashed_current_password)) {
-        $error_msg = 'Trenutno geslo ni pravilno.';
-        return;
-    }
-    
-    if ($new_password !== $confirm_password) {
-        $error_msg = 'Novo geslo in potrditev se ne ujemata.';
-        return;
-    }
-    
-    if (strlen($new_password) < 6) {
-        $error_msg = 'Novo geslo mora imeti vsaj 6 znakov.';
-        return;
-    }
-    
-    $new_hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
-    
-    $sql = "UPDATE uporabnik SET geslo = ? WHERE uporabnik_id = ?";
+    // 2. PRIDOBIVANJE PODATKOV UPORABNIKA IN CILJEV
+    $conn = connect_db();
+
+    // Združitev podatkov o uporabniku, vlogi in zadnjem cilju
+    $sql = "
+        SELECT 
+            u.ime, u.priimek, u.email, u.datum_rojstva, u.visina, u.teza, u.geslo,
+            v.naziv_vloge AS vloga_naziv, 
+            c.tip_cilja
+        FROM 
+            uporabnik u
+        JOIN 
+            vloga v ON u.vloga_id = v.vloga_id
+        LEFT JOIN 
+            cilj c ON u.uporabnik_id = c.uporabnik_id
+        WHERE 
+            u.uporabnik_id = ?
+        ORDER BY c.cilj_id DESC 
+        LIMIT 1
+    ";
+
     if ($stmt = $conn->prepare($sql)) {
-        $stmt->bind_param('si', $new_hashed_password, $uporabnik_id);
-        if ($stmt->execute()) {
-            $success_msg = 'Geslo je bilo uspešno spremenjeno.';
-        } else {
-            $error_msg = 'Napaka pri shranjevanju gesla.';
-        }
-        $stmt->close();
-    } else {
-        $error_msg = 'Priprava SQL stavka za geslo ni uspela.';
-    }
-}
-
-
-function update_personal_data($conn, $uporabnik_id, $ime_priimek, $datum_rojstva) {
-    global $error_msg, $success_msg;
-    
-    $name_parts = explode(' ', $ime_priimek, 2);
-    $ime = $name_parts[0];
-    $priimek = isset($name_parts[1]) ? $name_parts[1] : ''; 
-    
-    if (empty($ime) || empty($priimek)) {
-        $error_msg = 'Vnesite celotno Ime in Priimek.';
-        return;
-    }
-
-    $sql = "UPDATE uporabnik SET ime = ?, priimek = ?, datum_rojstva = ? WHERE uporabnik_id = ?";
-    if ($stmt = $conn->prepare($sql)) {
-        $stmt->bind_param('sssi', $ime, $priimek, $datum_rojstva, $uporabnik_id);
-        if ($stmt->execute()) {
-            $success_msg = 'Osebni podatki so bili uspešno posodobljeni.';
-            $_SESSION['ime'] = $ime;
-        } else {
-            $error_msg = 'Napaka pri shranjevanju osebnih podatkov.';
-        }
-        $stmt->close();
-    } else {
-        $error_msg = 'Priprava SQL stavka za osebne podatke ni uspela.';
-    }
-}
-
-function update_metrics($conn, $uporabnik_id, $teza, $visina, $cilj) {
-    global $error_msg, $success_msg;
-    
-    // Posodobitev teže in višine v tabeli uporabnik
-    $sql_u = "UPDATE uporabnik SET teza = ?, visina = ? WHERE uporabnik_id = ?";
-    if ($stmt_u = $conn->prepare($sql_u)) {
-        $stmt_u->bind_param('dsi', $teza, $visina, $uporabnik_id); 
+        $stmt->bind_param('i', $uporabnik_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
         
-        if (!$stmt_u->execute()) {
-            $error_msg = 'Napaka pri posodobitvi metrik.';
-            $stmt_u->close();
+        if ($result->num_rows == 1) {
+            $user_data = $result->fetch_assoc();
+        } else {
+            $error_msg = 'Napaka: Podatkov o uporabniku ni bilo mogoče naložiti.';
+        }
+        $stmt->close();
+    }
+
+    // 3. UPRAVLJANJE OBRAZCEV (Vse logike posodobitev so tukaj)
+
+    function update_password($conn, $uporabnik_id, $current_password, $new_password, $confirm_password, $hashed_current_password) {
+        global $error_msg, $success_msg;
+        
+        if (!password_verify($current_password, $hashed_current_password)) {
+            $error_msg = 'Trenutno geslo ni pravilno.';
             return;
         }
-        $stmt_u->close();
-    } else {
-         $error_msg = 'Priprava SQL stavka za metrike ni uspela.';
-         return;
-    }
-    
-    // Posodobitev/vstavitev novega cilja v tabelo cilj 
-    if (!empty($cilj)) {
-         
-         // 1. IZBRIŠI VSE PREJŠNJE CILJE TEGA UPORABNIKA
-         // To zagotavlja, da je v bazi shranjen samo en (najaktualnejši) cilj.
-         $sql_delete = "DELETE FROM cilj WHERE uporabnik_id = ?";
-         if ($stmt_del = $conn->prepare($sql_delete)) {
-             $stmt_del->bind_param('i', $uporabnik_id);
-             $stmt_del->execute();
-             $stmt_del->close();
-         } 
-         // Napake pri brisanju ne ustavijo celotnega procesa.
-
-         // 2. VSTAVI NOV CILJ
-         $sql_c = "INSERT INTO cilj (uporabnik_id, tip_cilja, status, datum_nalozitve) VALUES (?, ?, 'Aktiven', NOW())"; 
-         
-         if ($stmt_c = $conn->prepare($sql_c)) {
-             $stmt_c->bind_param('is', $uporabnik_id, $cilj);
-             $stmt_c->execute();
-             $stmt_c->close();
-         }
-    }
-    
-    $success_msg = 'Telesne metrike in cilji so bili uspešno posodobljeni.';
-}
-
-
-// Upravljanje POST zahtev glede na gumb
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    
-    if (isset($_POST['update_personal'])) {
-        update_personal_data($conn, $uporabnik_id, $_POST['profile_name'], $_POST['profile_dob']);
-        header('location: profil.php?status=personal_success');
-        exit;
         
-    } elseif (isset($_POST['update_metrics'])) {
-        $teza = filter_var($_POST['profile_weight'], FILTER_VALIDATE_FLOAT);
-        $visina = filter_var($_POST['profile_height'], FILTER_VALIDATE_INT);
-        $cilj = $_POST['profile_goal'];
+        if ($new_password !== $confirm_password) {
+            $error_msg = 'Novo geslo in potrditev se ne ujemata.';
+            return;
+        }
         
-        if ($teza === false || $visina === false) {
-             $error_msg = 'Teža in višina morata biti veljavni številki.';
+        if (strlen($new_password) < 6) {
+            $error_msg = 'Novo geslo mora imeti vsaj 6 znakov.';
+            return;
+        }
+        
+        $new_hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
+        
+        $sql = "UPDATE uporabnik SET geslo = ? WHERE uporabnik_id = ?";
+        if ($stmt = $conn->prepare($sql)) {
+            $stmt->bind_param('si', $new_hashed_password, $uporabnik_id);
+            if ($stmt->execute()) {
+                $success_msg = 'Geslo je bilo uspešno spremenjeno.';
+            } else {
+                $error_msg = 'Napaka pri shranjevanju gesla.';
+            }
+            $stmt->close();
         } else {
-            update_metrics($conn, $uporabnik_id, $teza, $visina, $cilj);
-            header('location: profil.php?status=metrics_success');
+            $error_msg = 'Priprava SQL stavka za geslo ni uspela.';
+        }
+    }
+
+
+    function update_personal_data($conn, $uporabnik_id, $ime_priimek, $datum_rojstva) {
+        global $error_msg, $success_msg;
+        
+        $name_parts = explode(' ', $ime_priimek, 2);
+        $ime = $name_parts[0];
+        $priimek = isset($name_parts[1]) ? $name_parts[1] : ''; 
+        
+        if (empty($ime) || empty($priimek)) {
+            $error_msg = 'Vnesite celotno Ime in Priimek.';
+            return;
+        }
+
+        $sql = "UPDATE uporabnik SET ime = ?, priimek = ?, datum_rojstva = ? WHERE uporabnik_id = ?";
+        if ($stmt = $conn->prepare($sql)) {
+            $stmt->bind_param('sssi', $ime, $priimek, $datum_rojstva, $uporabnik_id);
+            if ($stmt->execute()) {
+                $success_msg = 'Osebni podatki so bili uspešno posodobljeni.';
+                $_SESSION['ime'] = $ime;
+            } else {
+                $error_msg = 'Napaka pri shranjevanju osebnih podatkov.';
+            }
+            $stmt->close();
+        } else {
+            $error_msg = 'Priprava SQL stavka za osebne podatke ni uspela.';
+        }
+    }
+
+    function update_metrics($conn, $uporabnik_id, $teza, $visina, $cilj) {
+        global $error_msg, $success_msg;
+        
+        // Posodobitev teže in višine v tabeli uporabnik
+        $sql_u = "UPDATE uporabnik SET teza = ?, visina = ? WHERE uporabnik_id = ?";
+        if ($stmt_u = $conn->prepare($sql_u)) {
+            $stmt_u->bind_param('dsi', $teza, $visina, $uporabnik_id); 
+            
+            if (!$stmt_u->execute()) {
+                $error_msg = 'Napaka pri posodobitvi metrik.';
+                $stmt_u->close();
+                return;
+            }
+            $stmt_u->close();
+        } else {
+            $error_msg = 'Priprava SQL stavka za metrike ni uspela.';
+            return;
+        }
+        
+        // Posodobitev/vstavitev novega cilja v tabelo cilj 
+        if (!empty($cilj)) {
+            
+            // 1. IZBRIŠI VSE PREJŠNJE CILJE TEGA UPORABNIKA
+            // To zagotavlja, da je v bazi shranjen samo en (najaktualnejši) cilj.
+            $sql_delete = "DELETE FROM cilj WHERE uporabnik_id = ?";
+            if ($stmt_del = $conn->prepare($sql_delete)) {
+                $stmt_del->bind_param('i', $uporabnik_id);
+                $stmt_del->execute();
+                $stmt_del->close();
+            } 
+            // Napake pri brisanju ne ustavijo celotnega procesa.
+
+            // 2. VSTAVI NOV CILJ
+            $sql_c = "INSERT INTO cilj (uporabnik_id, tip_cilja, status, datum_nalozitve) VALUES (?, ?, 'Aktiven', NOW())"; 
+            
+            if ($stmt_c = $conn->prepare($sql_c)) {
+                $stmt_c->bind_param('is', $uporabnik_id, $cilj);
+                $stmt_c->execute();
+                $stmt_c->close();
+            }
+        }
+        
+        $success_msg = 'Telesne metrike in cilji so bili uspešno posodobljeni.';
+    }
+
+
+    // Upravljanje POST zahtev glede na gumb
+    if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+        
+        if (isset($_POST['update_personal'])) {
+            update_personal_data($conn, $uporabnik_id, $_POST['profile_name'], $_POST['profile_dob']);
+            header('location: profil.php?status=personal_success');
+            exit;
+            
+        } elseif (isset($_POST['update_metrics'])) {
+            $teza = filter_var($_POST['profile_weight'], FILTER_VALIDATE_FLOAT);
+            $visina = filter_var($_POST['profile_height'], FILTER_VALIDATE_INT);
+            $cilj = $_POST['profile_goal'];
+            
+            if ($teza === false || $visina === false) {
+                $error_msg = 'Teža in višina morata biti veljavni številki.';
+            } else {
+                update_metrics($conn, $uporabnik_id, $teza, $visina, $cilj);
+                header('location: profil.php?status=metrics_success');
+                exit;
+            }
+            
+        } elseif (isset($_POST['update_password'])) {
+            update_password($conn, $uporabnik_id, $_POST['current_password'], $_POST['new_password'], $_POST['confirm_password'], $user_data['geslo']);
+            header('location: profil.php?status=password_success');
             exit;
         }
         
-    } elseif (isset($_POST['update_password'])) {
-        update_password($conn, $uporabnik_id, $_POST['current_password'], $_POST['new_password'], $_POST['confirm_password'], $user_data['geslo']);
-        header('location: profil.php?status=password_success');
-        exit;
+        if ($conn->ping()) {
+            $conn->close();
+        }
     }
-    
-    if ($conn->ping()) {
+
+    // Upravljanje statusnih sporočil po preusmeritvi
+    if (isset($_GET['status'])) {
+        if ($_GET['status'] == 'personal_success') {
+            $success_msg = 'Osebni podatki so bili uspešno posodobljeni.';
+        } elseif ($_GET['status'] == 'metrics_success') {
+            $success_msg = 'Telesne metrike in cilji so bili uspešno posodobljeni.';
+        } elseif ($_GET['status'] == 'password_success') {
+            $success_msg = 'Geslo je bilo uspešno spremenjeno.';
+        }
+    }
+
+    // Če ni POST-a, zapri povezavo
+    if ($conn && $conn->ping()) {
         $conn->close();
     }
-}
-
-// Upravljanje statusnih sporočil po preusmeritvi
-if (isset($_GET['status'])) {
-    if ($_GET['status'] == 'personal_success') {
-        $success_msg = 'Osebni podatki so bili uspešno posodobljeni.';
-    } elseif ($_GET['status'] == 'metrics_success') {
-        $success_msg = 'Telesne metrike in cilji so bili uspešno posodobljeni.';
-    } elseif ($_GET['status'] == 'password_success') {
-        $success_msg = 'Geslo je bilo uspešno spremenjeno.';
-    }
-}
-
-// Če ni POST-a, zapri povezavo
-if ($conn && $conn->ping()) {
-    $conn->close();
-}
 ?>
 
 <!DOCTYPE html>
@@ -453,7 +453,7 @@ if ($conn && $conn->ping()) {
                     </button>
                 </form>
             </div>
-            
+            <?php echo "Prijavljen uporabnik ID: " . $_SESSION['uporabnik_id']; ?>
         </div>
         
     </div>

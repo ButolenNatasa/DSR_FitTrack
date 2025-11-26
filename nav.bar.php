@@ -1,22 +1,22 @@
 <?php
-// Ta datoteka vsebuje samo vsebino stranske navigacije in jo je treba vključiti na vsako stran aplikacije.
+    // Ta datoteka vsebuje samo vsebino stranske navigacije in jo je treba vključiti na vsako stran aplikacije.
 
-// 1. Določitev imena trenutne datoteke (npr. 'domaca.stran.php')
-$current_file = basename($_SERVER['PHP_SELF']);
+    // 1. Določitev imena trenutne datoteke (npr. 'domaca.stran.php')
+    $current_file = basename($_SERVER['PHP_SELF']);
 
-// 2. Funkcija za preverjanje in vračanje razreda 'active'
-function get_active_class($current_page, $target_page) {
-    // Posebno ravnanje za Zapisnik Treningov:
-    // Povezava mora biti aktivna tudi, ko je uporabnik na 'dodaj_trening.php' (glede na prejšnje vprašanje)
-    if ($target_page === 'zapisnik.treningov.php' && ($current_page === 'dodaj_trening.php')) {
-        return 'active';
+    // 2. Funkcija za preverjanje in vračanje razreda 'active'
+    function get_active_class($current_page, $target_page) {
+        // Posebno ravnanje za Zapisnik Treningov:
+        // Povezava mora biti aktivna tudi, ko je uporabnik na 'dodaj_trening.php' (glede na prejšnje vprašanje)
+        if ($target_page === 'zapisnik.treningov.php' && ($current_page === 'dodaj_trening.php')) {
+            return 'active';
+        }
+        
+        if ($current_page === $target_page) {
+            return 'active';
+        }
+        return '';
     }
-    
-    if ($current_page === $target_page) {
-        return 'active';
-    }
-    return '';
-}
 ?>
 
 <div class="sidebar">
@@ -55,7 +55,7 @@ function get_active_class($current_page, $target_page) {
     </nav>
 
     <div class="logout-section">
-        <a href="index.php" class="logout-btn">
+        <a href="logout.php" class="logout-btn">
             <i class="fas fa-sign-out-alt"></i>
             <span>Odjava</span>
         </a>
