@@ -229,6 +229,9 @@
                         <a href="pdf.php" class="action-button report-button" target="_blank">
                             <i class="fas fa-file-pdf"></i> Izvoz Poročila (PDF)
                         </a>
+                        <a href="excel.php" class="action-button report-button" >
+                            <i class="fas fa-file-excel"></i> Izvoz v Excel (CSV)
+                        </a>
                     </header>
 
                     <div class="chart-grid">

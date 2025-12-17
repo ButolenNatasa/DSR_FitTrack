@@ -10,17 +10,42 @@
         exit();
     }
 
-    // Pridobi vse treninge uporabnika, po datumu od najnovejšega
-    $sql = "SELECT * FROM trening WHERE uporabnik_id = ? ORDER BY datum DESC";
+    // --- LOGIKA ZA ISKANJE IN FILTRIRANJE ---
+    $search = $_GET['search'] ?? '';
+    $filter_tip = $_GET['workout-type-filter'] ?? 'all';
+
+    // Osnovni SQL
+    $sql = "SELECT * FROM trening WHERE uporabnik_id = ?";
+    $params = [$uporabnik_id];
+    $types = "i";
+
+    // Dodajanje iskalnega niza (išče v tipu treninga in opombah)
+    if (!empty($search)) {
+        $sql .= " AND (tip_treninga LIKE ? OR opombe LIKE ?)";
+        $search_param = "%$search%";
+        $params[] = $search_param;
+        $params[] = $search_param;
+        $types .= "ss";
+    }
+
+    // Dodajanje filtra za tip
+    if ($filter_tip !== 'all') {
+        $sql .= " AND tip_treninga = ?";
+        $params[] = $filter_tip;
+        $types .= "s";
+    }
+
+    // Sortiranje (vedno po datumu nazaj)
+    $sql .= " ORDER BY datum DESC";
+
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $uporabnik_id);
+    $stmt->bind_param($types, ...$params);
     $stmt->execute();
     $result = $stmt->get_result();
     $treningi = $result->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
     $conn->close();
 ?>
-
 <html>
     <head>
         <meta charset="UTF-8">
@@ -156,21 +181,28 @@
                         <h2>Vsi Treningi</h2>
                         <p class="subtitle">Iskanje, filtriranje in upravljanje zgodovine treningov</p>
 
-                        <div class="controls-row">
+                        <form method="GET" action="" class="controls-row">
                             <div class="search-box">
                                 <i class="fas fa-search"></i>
-                                <input type="text" placeholder="Išči treninge..." aria-label="Iskanje treningov">
+                                <input type="text" name="search" placeholder="Išči treninge..." 
+                                    value="<?php echo htmlspecialchars($search); ?>" aria-label="Iskanje treningov">
                             </div>
+                            
                             <div class="filter-dropdown">
-                                <select name="workout-type-filter" aria-label="Filter tipa treninga">
-                                    <option value="all">Vsi Tipi</option>
-                                    <option value="moč">Trening moči</option>
-                                    <option value="kardio">Kardio</option>
-                                    <option value="hiit">HIIT</option>
-                                    <option value="joga">Joga</option>
+                                <select name="workout-type-filter" onchange="this.form.submit()" aria-label="Filter tipa treninga">
+                                    <option value="all" <?php echo $filter_tip == 'all' ? 'selected' : ''; ?>>Vsi Tipi</option>
+                                    <option value="moč" <?php echo $filter_tip == 'moč' ? 'selected' : ''; ?>>Trening moči</option>
+                                    <option value="kardio" <?php echo $filter_tip == 'kardio' ? 'selected' : ''; ?>>Kardio</option>
+                                    <option value="hiit" <?php echo $filter_tip == 'hiit' ? 'selected' : ''; ?>>HIIT</option>
+                                    <option value="joga" <?php echo $filter_tip == 'joga' ? 'selected' : ''; ?>>Joga</option>
                                 </select>
                             </div>
-                        </div>
+                            
+                            <button type="submit" class="action-btn">Filtriraj</button>
+                            <?php if(!empty($search) || $filter_tip != 'all'): ?>
+                                <a href="zapisnik.treningov.php" class="action-btn" style="text-decoration:none;">Počisti</a>
+                            <?php endif; ?>
+                        </form>
 
                         <div class="workout-table-container">
                             <table>
